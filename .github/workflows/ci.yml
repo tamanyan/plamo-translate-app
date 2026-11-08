@@ -1,0 +1,31 @@
+name: macOS
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: macos-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: swift --version
+      - name: Tests
+        run: ./scripts/test.sh
+      - name: Release application
+        run: ./scripts/build-app.sh
+      - name: Bundle smoke test
+        run: |
+          'dist/PLaMo Translate.app/Contents/Helpers/llama/llama-server' --version
+          codesign --verify --deep --strict 'dist/PLaMo Translate.app'
+      - name: Archive application
+        run: ditto -c -k --sequesterRsrc --keepParent 'dist/PLaMo Translate.app' dist/PLaMo-Translate-macOS.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PLaMo-Translate-macOS
+          path: dist/PLaMo-Translate-macOS.zip
